@@ -7,7 +7,7 @@ var TABS = [
   'https://www.dmi.dk/#radar',
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
-var RELOAD_WHEN_LEFT = [true, false, true];  // DMI refreshes itself instead, so its zoom is kept
+var RELOAD_WHEN_LEFT = [false, false, true];  // DMI refreshes itself instead, so its zoom is kept
 var SHOW_SECONDS = 60;         // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
