@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slideshow</title>
+<style>
+  html, body { margin: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  #message {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #fff; font: 600 28px/1.4 system-ui, sans-serif; text-align: center; padding: 40px;
+  }
+</style>
+</head>
+<body>
+<div id="message">Slideshow er ikke sat op endnu</div>
+
+<script>
+// ===== Settings =====
+// The deck's "Publish to web" ID: in Google Slides, File > Share > Publish to web > Link.
+// The link looks like https://docs.google.com/presentation/d/e/THIS_LONG_ID/pub?...
+// Paste THIS_LONG_ID below.
+var DECK_ID = '';
+var SECONDS_PER_SLIDE = 10;
+var RELOAD_MS = 15 * 60 * 1000;   // fetch Ole's latest changes every 15 minutes (while hidden)
+
+// ===== Slideshow =====
+var frame = null;
+
+function deckUrl() {
+  return 'https://docs.google.com/presentation/d/e/' + DECK_ID +
+         '/embed?start=true&loop=true&rm=minimal&delayms=' + (SECONDS_PER_SLIDE * 1000) +
+         '&t=' + Date.now();
+}
+
+function isCurrentTab() {
+  return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
+}
+
+function load() {
+  if (!DECK_ID) return;
+  if (!frame) {
+    document.getElementById('message').style.display = 'none';
+    frame = document.createElement('iframe');
+    frame.allow = 'autoplay; fullscreen';
+    document.body.appendChild(frame);
+  }
+  frame.src = deckUrl();
+}
+
+load();
+
+// Start from slide 1 every time the tab comes into view (so the campaign image shows first),
+// and pick up changes now and then while the tab is hidden.
+var wasCurrent = null;
+var hiddenSince = Date.now();
+setInterval(function () {
+  var current = isCurrentTab();
+  if (current && wasCurrent === false) load();
+  if (!current) {
+    if (wasCurrent !== false) hiddenSince = Date.now();
+    else if (Date.now() - hiddenSince > RELOAD_MS) { load(); hiddenSince = Date.now(); }
+  }
+  wasCurrent = current;
+}, 1000);
+</script>
+</body>
+</html>

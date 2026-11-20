@@ -5,10 +5,15 @@
 var TABS = [
   'https://hrskaeg.github.io/dpu-tv/radar.html',
   'https://www.flightradar24.com/56.23,10.51/8',
+  'https://hrskaeg.github.io/dpu-tv/airport.html',
+  'https://hrskaeg.github.io/dpu-tv/slides.html',
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
-var RELOAD_WHEN_LEFT = [false, false, true];  // radar page refreshes itself; Flightradar24 updates live and draws slowly
-var SHOW_SECONDS = 60;         // how long each tab is shown
+// Seconds each tab is shown, same order as TABS (make the slideshow long enough for all slides)
+var SHOW_SECONDS = [60, 60, 60, 60, 60];
+// Reload the tab in the background after it has been shown (only FlightLogger needs it;
+// our own pages refresh themselves, Flightradar24 updates live and draws slowly)
+var RELOAD_WHEN_LEFT = [false, false, false, false, true];
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
 function tvIsCurrentTab() {
@@ -37,11 +42,18 @@ function tvLoginFieldVisible() {
     var current = fully.getCurrentTabIndex() === me;
     if (!current) { wasCurrent = false; shown = 0; held = 0; return; }
 
+    // Count the tabs Fully actually has, so a Start URL list that doesn't match TABS
+    // (e.g. while updating the sticks) can't make the rotation jump to a tab that isn't there
+    var count = TABS.length;
+    try { count = JSON.parse(fully.getTabList()).length || TABS.length; } catch (e) {}
+
     if (!wasCurrent) {
       // Just came into view: refresh the previous tab in the background (if allowed)
       wasCurrent = true;
-      var prev = (me - 1 + TABS.length) % TABS.length;
-      if (prev !== me && RELOAD_WHEN_LEFT[prev]) fully.loadUrlInTabByIndex(prev, TABS[prev]);
+      var prev = (me - 1 + count) % count;
+      if (count === TABS.length && prev !== me && RELOAD_WHEN_LEFT[prev]) {
+        fully.loadUrlInTabByIndex(prev, TABS[prev]);
+      }
     }
 
     // Login or 2FA code on screen: wait so someone can type it
@@ -49,9 +61,9 @@ function tvLoginFieldVisible() {
     held = 0;
 
     shown++;
-    if (shown >= SHOW_SECONDS) {
+    if (shown >= (SHOW_SECONDS[me] || 60)) {
       shown = 0;
-      fully.focusTabByIndex((me + 1) % TABS.length);
+      fully.focusTabByIndex((me + 1) % count);
     }
   }, 1000);
 })();

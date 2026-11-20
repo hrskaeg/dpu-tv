@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Lufthavn live</title>
+<style>
+  html, body { margin: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
+  #player { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #label {
+    position: absolute; right: 16px; bottom: 32px; z-index: 10;
+    background: rgba(0, 0, 0, 0.6); color: #fff; padding: 6px 10px; border-radius: 6px;
+    font: 600 18px/1.2 system-ui, sans-serif; text-align: right;
+  }
+  #label small { display: block; font-weight: 400; font-size: 12px; opacity: 0.8; }
+  #label .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e53935; margin-right: 6px; }
+  #message {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    color: #fff; font: 600 28px/1.4 system-ui, sans-serif; text-align: center; padding: 40px;
+  }
+</style>
+</head>
+<body>
+<div id="player"></div>
+<div id="label"><span class="dot"></span>LIVE<small id="name"></small></div>
+<div id="message"></div>
+
+<script>
+// ===== Settings =====
+// Live streams to try, in order. If one fails (ended, removed, embedding blocked),
+// the page moves on to the next. Add more as backups: the id is the part after "v=" in
+// a YouTube address (youtube.com/watch?v=THIS_PART).
+var STREAMS = [
+  { id: 'qq6orQzMx-A', name: 'Lufthavn live' }
+];
+var RETRY_ALL_AFTER_MS = 10 * 60 * 1000;   // if every stream failed, try the list again after 10 min
+
+// ===== Player =====
+var player = null;
+var index = 0;
+var nameEl = document.getElementById('name');
+var messageEl = document.getElementById('message');
+
+function isCurrentTab() {
+  return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
+}
+
+function showMessage(text) {
+  messageEl.textContent = text;
+  messageEl.style.display = text ? 'flex' : 'none';
+}
+
+function loadStream(i) {
+  index = i;
+  nameEl.textContent = STREAMS[i].name || '';
+  showMessage('');
+  if (player) player.loadVideoById(STREAMS[i].id);
+}
+
+function nextStream() {
+  if (index + 1 < STREAMS.length) {
+    loadStream(index + 1);
+  } else {
+    showMessage('Live-billedet er ikke tilgængeligt lige nu');
+    setTimeout(function () { loadStream(0); }, RETRY_ALL_AFTER_MS);
+  }
+}
+
+// Called by the YouTube IFrame API when it has loaded
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('player', {
+    width: '100%', height: '100%',
+    videoId: STREAMS[0].id,
+    playerVars: {
+      autoplay: 1, mute: 1, controls: 0, rel: 0, playsinline: 1,
+      disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1
+    },
+    events: {
+      onReady: function (e) {
+        nameEl.textContent = STREAMS[0].name || '';
+        e.target.mute();
+        if (isCurrentTab()) e.target.playVideo();
+      },
+      // 2 = bad id, 5 = player error, 100 = not found/removed, 101/150 = embedding not allowed
+      onError: function () { nextStream(); },
+      onStateChange: function (e) {
+        // 0 = ended: a live stream that ends has stopped broadcasting
+        if (e.data === 0) nextStream();
+      }
+    }
+  });
+}
+
+// Pause while this tab is hidden (saves the stick's CPU and network);
+// jump back to live when it comes into view.
+var wasCurrent = null;
+setInterval(function () {
+  if (!player || !player.getPlayerState) return;
+  var current = isCurrentTab();
+  if (current && wasCurrent === false) {
+    player.loadVideoById(STREAMS[index].id);   // reload = back to the live edge
+    player.mute();
+  } else if (!current && wasCurrent !== false) {
+    player.pauseVideo();
+  } else if (current && player.getPlayerState() === 2) {
+    player.playVideo();                         // paused while showing: resume
+  }
+  wasCurrent = current;
+}, 1000);
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
