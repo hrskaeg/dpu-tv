@@ -95,14 +95,16 @@ function onYouTubeIframeAPIReady() {
 }
 
 // Pause while this tab is hidden (saves the stick's CPU and network);
-// jump back to live when it comes into view.
+// jump back to live when it comes into view. We resume and seek instead of reloading the
+// video, because every reload makes YouTube play a new ad before the stream.
 var wasCurrent = null;
 setInterval(function () {
   if (!player || !player.getPlayerState) return;
   var current = isCurrentTab();
   if (current && wasCurrent === false) {
-    player.loadVideoById(STREAMS[index].id);   // reload = back to the live edge
     player.mute();
+    player.playVideo();
+    try { player.seekTo(player.getDuration(), true); } catch (e) {}   // live edge
   } else if (!current && wasCurrent !== false) {
     player.pauseVideo();
   } else if (current && player.getPlayerState() === 2) {
