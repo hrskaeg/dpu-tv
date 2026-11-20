@@ -3,11 +3,11 @@
 // ===== TAB ROTATION: show each tab for a while, reload the one we left in the background =====
 // Must match the order of the Start URLs (one per line) in Fully
 var TABS = [
-  'https://www.flightradar24.com/56.23,10.51/8',
   'https://www.dmi.dk/#radar',
+  'https://www.flightradar24.com/56.23,10.51/8',
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
-var RELOAD_WHEN_LEFT = [false, false, true];  // Flightradar24 updates live and draws slowly; DMI refreshes itself
+var RELOAD_WHEN_LEFT = [false, false, true];  // DMI refreshes itself; Flightradar24 updates live and draws slowly
 var SHOW_SECONDS = 60;         // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
@@ -147,4 +147,3 @@ if (location.hostname.endsWith('flightlogger.net')) {
     document.body.style.paddingTop = window.TV.space;
     document.documentElement.style.zoom = window.TV.zoom;
   }, 1000);
-}
