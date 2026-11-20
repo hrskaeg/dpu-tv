@@ -1,28 +1,34 @@
 // ===== Lounge TV script for Fully Kiosk Browser (loaded from a file by the loader in Inject JavaScript) =====
 
 // ===== TAB ROTATION: show each tab for a while, reload the one we left in the background =====
-// Must match the order of the Start URLs (one per line) in Fully
-var TABS = [
-  'https://hrskaeg.github.io/dpu-tv/radar.html',
-  'https://www.flightradar24.com/56.23,10.51/8',
-  'https://hrskaeg.github.io/dpu-tv/airport.html',
-  'https://hrskaeg.github.io/dpu-tv/slides.html',
-  'https://dpu.flightlogger.net/a/dpu/bookings/overview'
-];
-// Seconds each tab is shown, same order as TABS (make the slideshow long enough for all slides)
-var SHOW_SECONDS = [180, 180, 180, 180, 180];
-// Reload the tab in the background after it has been shown (only FlightLogger needs it;
-// our own pages refresh themselves, Flightradar24 updates live and draws slowly)
-var RELOAD_WHEN_LEFT = [false, false, false, false, true];
-var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
+// Each stick has its own tab list. Five tabs on one Fire TV stick was too much (the WebView
+// renderer kept freezing), so the heavy pages are split: Flightradar24 on one screen, the
+// live camera on the other. The lists MUST match each stick's Start URLs (one per line).
+var RADAR       = 'https://hrskaeg.github.io/dpu-tv/radar.html';
+var FR24        = 'https://www.flightradar24.com/56.23,10.51/8';
+var AIRPORT     = 'https://hrskaeg.github.io/dpu-tv/airport.html';
+var SLIDES      = 'https://hrskaeg.github.io/dpu-tv/slides.html';
+var FLIGHTLOGGER = 'https://dpu.flightlogger.net/a/dpu/bookings/overview';
 
-// The rotation follows the clock, so it stays put across restarts, and each screen is
-// shifted by its own offset so the two TVs never show the same thing at the same time.
-// Keys are the Fully Device IDs (front page of the admin panel); offset in seconds.
-var OFFSET_BY_DEVICE = {
-  '6e6922e9-6e6922e9': 0,     // stick .57 (old Samsung TV)
-  '80639665-80639665': 360    // stick .56 (LG): two tabs ahead
+// Keys are the Fully Device IDs (front page of the admin panel).
+// The slideshow sits at a different position on each screen, so the two never show it at once.
+var SCREENS = {
+  '6e6922e9-6e6922e9': {            // stick .57 (old Samsung TV)
+    tabs:   [RADAR, FR24, SLIDES],
+    reload: [false, false, false]
+  },
+  '80639665-80639665': {            // stick .56 (LG)
+    tabs:   [SLIDES, AIRPORT, FLIGHTLOGGER],
+    reload: [false, false, true]    // FlightLogger: reload after showing, to get new bookings
+  }
 };
+var SHOW_SECONDS = 180;            // how long each tab is shown
+var MAX_LOGIN_HOLD = 15 * 60;      // max seconds to hold on a login / 2FA screen
+
+var tvScreen = SCREENS['6e6922e9-6e6922e9'];
+try { tvScreen = SCREENS[fully.getDeviceId()] || tvScreen; } catch (e) {}
+var TABS = tvScreen.tabs;
+var RELOAD_WHEN_LEFT = tvScreen.reload;
 
 function tvIsCurrentTab() {
   return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
@@ -39,19 +45,9 @@ function tvLoginFieldVisible() {
   return false;
 }
 
-// Which tab should be showing right now, according to the clock and this screen's offset
+// Which tab should be showing right now, according to the clock (same clock on both sticks)
 function tvScheduledTab(count) {
-  var offset = 0;
-  try { offset = OFFSET_BY_DEVICE[fully.getDeviceId()] || 0; } catch (e) {}
-  var times = [];
-  for (var i = 0; i < count; i++) times.push(SHOW_SECONDS[i] || 60);
-  var cycle = times.reduce(function (a, b) { return a + b; }, 0);
-  var pos = (Math.floor(Date.now() / 1000) + offset) % cycle;
-  for (var j = 0; j < count; j++) {
-    if (pos < times[j]) return j;
-    pos -= times[j];
-  }
-  return 0;
+  return Math.floor(Date.now() / 1000 / SHOW_SECONDS) % count;
 }
 
 (function () {
