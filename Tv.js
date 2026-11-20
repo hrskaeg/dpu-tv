@@ -1,34 +1,10 @@
 // ===== Lounge TV script for Fully Kiosk Browser (loaded from a file by the loader in Inject JavaScript) =====
 
-// ===== TAB ROTATION: show each tab for a while, reload the one we left in the background =====
-// Each stick has its own tab list. Five tabs on one Fire TV stick was too much (the WebView
-// renderer kept freezing), so the heavy pages are split: Flightradar24 on one screen, the
-// live camera on the other. The lists MUST match each stick's Start URLs (one per line).
-var RADAR       = 'https://hrskaeg.github.io/dpu-tv/radar.html';
-var FR24        = 'https://www.flightradar24.com/56.23,10.51/8';
-var AIRPORT     = 'https://hrskaeg.github.io/dpu-tv/airport.html';
-var SLIDES      = 'https://hrskaeg.github.io/dpu-tv/slides.html';
-var FLIGHTLOGGER = 'https://dpu.flightlogger.net/a/dpu/bookings/overview';
-
-// Keys are the Fully Device IDs (front page of the admin panel).
-// The slideshow sits at a different position on each screen, so the two never show it at once.
-var SCREENS = {
-  '6e6922e9-6e6922e9': {            // stick .57 (old Samsung TV)
-    tabs:   [RADAR, FR24, SLIDES],
-    reload: [false, false, false]
-  },
-  '80639665-80639665': {            // stick .56 (LG)
-    tabs:   [SLIDES, AIRPORT, FLIGHTLOGGER],
-    reload: [false, false, true]    // FlightLogger: reload after showing, to get new bookings
-  }
-};
+// ===== TAB ROTATION: show each tab for 3 minutes, then go to the next one =====
+// The tabs are the Start URLs in Fully (one per line), in that order. To keep the two screens
+// from showing the same page, give each stick the same pages in a different order.
 var SHOW_SECONDS = 180;            // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;      // max seconds to hold on a login / 2FA screen
-
-var tvScreen = SCREENS['6e6922e9-6e6922e9'];
-try { tvScreen = SCREENS[fully.getDeviceId()] || tvScreen; } catch (e) {}
-var TABS = tvScreen.tabs;
-var RELOAD_WHEN_LEFT = tvScreen.reload;
 
 function tvIsCurrentTab() {
   return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
@@ -45,42 +21,25 @@ function tvLoginFieldVisible() {
   return false;
 }
 
-// Which tab should be showing right now, according to the clock (same clock on both sticks)
-function tvScheduledTab(count) {
-  return Math.floor(Date.now() / 1000 / SHOW_SECONDS) % count;
-}
-
 (function () {
   if (typeof fully === 'undefined') return;   // JavaScript Interface not enabled
   var me = fully.getThisTabIndex();
-  var wasCurrent = false;
-  var held = 0;
+  var shown = 0;   // seconds this tab has been showing
+  var held = 0;    // seconds spent waiting on a login screen
 
   setInterval(function () {
-    var current = fully.getCurrentTabIndex() === me;
-    if (!current) { wasCurrent = false; held = 0; return; }
-
-    // Count the tabs Fully actually has, so a Start URL list that doesn't match TABS
-    // (e.g. while updating the sticks) can't make the rotation jump to a tab that isn't there
-    var count = TABS.length;
-    try { count = JSON.parse(fully.getTabList()).length || TABS.length; } catch (e) {}
-
-    if (!wasCurrent) {
-      // Just came into view: refresh the previous tab in the background (if allowed)
-      wasCurrent = true;
-      var prev = (me - 1 + count) % count;
-      if (count === TABS.length && prev !== me && RELOAD_WHEN_LEFT[prev]) {
-        fully.loadUrlInTabByIndex(prev, TABS[prev]);
-      }
-    }
+    if (fully.getCurrentTabIndex() !== me) { shown = 0; held = 0; return; }
 
     // Login or 2FA code on screen: wait so someone can type it
     if (tvLoginFieldVisible() && held < MAX_LOGIN_HOLD) { held++; return; }
-    held = 0;
 
-    // Only the tab that is showing moves the rotation on
-    var target = tvScheduledTab(count);
-    if (target !== me) fully.focusTabByIndex(target);
+    shown++;
+    if (shown < SHOW_SECONDS) return;
+    shown = 0;
+
+    var count = 1;
+    try { count = JSON.parse(fully.getTabList()).length; } catch (e) {}
+    if (count > 1) fully.focusTabByIndex((me + 1) % count);
   }, 1000);
 })();
 
@@ -142,4 +101,15 @@ if (location.hostname.endsWith('flightlogger.net')) {
     if (lost && Date.now() - flLastScan > 5000) { flLastScan = Date.now(); flFindToolbar(); }
     flPinned.forEach(function (el) { flSet(el.style, 'top', '0px'); });
   }, 1000);
+}
+
+// ===== FlightLogger: reload in the background once it has been shown, so it has new bookings next time =====
+if (location.hostname.endsWith('flightlogger.net') && typeof fully !== 'undefined') {
+  (function () {
+    var wasShown = false;
+    setInterval(function () {
+      if (tvIsCurrentTab()) { wasShown = true; return; }
+      if (wasShown) { wasShown = false; location.reload(); }
+    }, 1000);
+  })();
 }
