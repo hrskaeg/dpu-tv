@@ -147,3 +147,4 @@ if (location.hostname.endsWith('flightlogger.net')) {
     document.body.style.paddingTop = window.TV.space;
     document.documentElement.style.zoom = window.TV.zoom;
   }, 1000);
+}
