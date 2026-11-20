@@ -3,11 +3,11 @@
 // ===== TAB ROTATION: show each tab for a while, reload the one we left in the background =====
 // Must match the order of the Start URLs (one per line) in Fully
 var TABS = [
-  'https://www.dmi.dk/#radar',
+  'https://hrskaeg.github.io/dpu-tv/radar.html',
   'https://www.flightradar24.com/56.23,10.51/8',
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
-var RELOAD_WHEN_LEFT = [false, false, true];  // DMI refreshes itself; Flightradar24 updates live and draws slowly
+var RELOAD_WHEN_LEFT = [false, false, true];  // radar page refreshes itself; Flightradar24 updates live and draws slowly
 var SHOW_SECONDS = 60;         // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
@@ -76,53 +76,6 @@ function tvLoginFieldVisible() {
     if (n > 60) clearInterval(t);
   }, 1000);
 })();
-
-// ===== DMI: keep panel closed + radar playing; zoom once when first on screen; refresh data every 10 min =====
-if (location.hostname.endsWith('dmi.dk')) {
-  var dmiZoomed = false;
-  var dmiSeconds = 0;
-  var dmiVisibleTicks = 0;
-  var DMI_REFRESH_SECONDS = 600;
-  var DMI_ZOOM_AFTER_VISIBLE = 15;  // seconds the tab must be on screen before zooming
-
-  function zoomAt(xPct, yPct, amount) {
-    var vp = document.querySelector('#new-map-viewer .ol-viewport');
-    if (!vp) return false;
-    var r = vp.getBoundingClientRect();
-    if (r.width < 100 || r.height < 100) return false;
-    vp.dispatchEvent(new WheelEvent('wheel', {
-      deltaY: -(amount || 300), deltaMode: 0, bubbles: true, cancelable: true,
-      clientX: r.left + r.width * xPct, clientY: r.top + r.height * yPct
-    }));
-    return true;
-  }
-
-  setInterval(function () {
-    dmiSeconds++;
-    var radar = document.querySelector('#map-radar');
-    if (!radar) return;
-
-    var closer = radar.querySelector('.map-menu2021-menu-wrapper.expanded .map-menu2021-menu-closer');
-    if (closer) { closer.click(); return; }
-
-    var playIcon = radar.querySelector('.playbutton .icon-play');
-    if (playIcon) { playIcon.click(); return; }
-
-    // zoom once, after this tab has been on screen for a few seconds (a hidden map ignores the zoom)
-    if (tvIsCurrentTab()) dmiVisibleTicks++; else dmiVisibleTicks = 0;
-    if (!dmiZoomed && dmiVisibleTicks >= DMI_ZOOM_AFTER_VISIBLE && zoomAt(0.42, 0.45)) {
-      dmiZoomed = true;
-      console.log('TV: DMI zoom applied');
-    }
-
-    // refresh radar data with DMI's own button instead of reloading the page
-    if (dmiSeconds >= DMI_REFRESH_SECONDS) {
-      dmiSeconds = 0;
-      var reload = radar.querySelector('.reload-button');
-      if (reload) reload.click();
-    }
-  }, 1000);
-}
 
 // ===== FlightLogger: zoom, remove the navbar, toolbar at the top =====
 // Adjust live in the console: TV.zoom, TV.space (>= 0), TV.shift (may be negative)

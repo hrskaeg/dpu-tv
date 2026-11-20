@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nedbørsradar</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body, #map { margin: 0; height: 100%; width: 100%; background: #dfe6ea; }
+  #stamp {
+    position: absolute; left: 24px; bottom: 24px; z-index: 1000;
+    background: rgba(0, 0, 0, 0.65); color: #fff; padding: 10px 16px; border-radius: 8px;
+    font: 600 28px/1.2 system-ui, sans-serif;
+  }
+  #stamp small { display: block; font-weight: 400; font-size: 16px; opacity: 0.8; }
+  .leaflet-control-attribution { font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="stamp">Nedbør<small>henter radar …</small></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ===== Settings =====
+// Framing: Jutland's west coast to Bornholm, Skagen to the German border (Ole's wish)
+var BOUNDS = [[54.55, 8.0], [57.8, 15.2]];
+var FRAME_MS = 600;          // time per radar frame in the animation
+var LAST_FRAME_PAUSE_MS = 2500;  // extra pause on the newest frame
+var REFRESH_MS = 5 * 60 * 1000;  // fetch new radar frames every 5 minutes
+var COLOR_SCHEME = 2;        // RainViewer colour scheme
+var OPTIONS = '1_1';         // smooth_snow
+var RADAR_OPACITY = 0.75;
+
+// ===== Map =====
+var map = L.map('map', {
+  zoomControl: false, attributionControl: true,
+  dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+  boxZoom: false, keyboard: false, touchZoom: false,
+  zoomSnap: 0.25
+});
+map.fitBounds(BOUNDS);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+// City labels on top of the radar, so they stay readable
+map.createPane('labels');
+map.getPane('labels').style.zIndex = 650;
+map.getPane('labels').style.pointerEvents = 'none';
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', pane: 'labels', maxZoom: 19
+}).addTo(map);
+
+// ===== Radar animation =====
+var frames = [];      // [{time, layer}]
+var current = -1;
+var timer = null;
+var stamp = document.getElementById('stamp');
+
+function fmt(t) {
+  var d = new Date(t * 1000);
+  return d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+}
+
+function showFrame(i) {
+  if (current >= 0 && frames[current]) frames[current].layer.setOpacity(0);
+  current = i;
+  frames[i].layer.setOpacity(RADAR_OPACITY);
+  var newest = i === frames.length - 1;
+  stamp.innerHTML = 'Nedbør kl. ' + fmt(frames[i].time) +
+    '<small>' + (newest ? 'seneste radarbillede' : 'de seneste 2 timer') + '</small>';
+}
+
+function step() {
+  if (!frames.length) return;
+  var next = (current + 1) % frames.length;
+  showFrame(next);
+  timer = setTimeout(step, next === frames.length - 1 ? LAST_FRAME_PAUSE_MS : FRAME_MS);
+}
+
+function load() {
+  fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var past = (data.radar && data.radar.past) || [];
+      if (!past.length) throw new Error('no radar frames');
+      // replace old layers with the new set
+      frames.forEach(function (f) { map.removeLayer(f.layer); });
+      frames = past.map(function (p) {
+        var layer = L.tileLayer(data.host + p.path + '/256/{z}/{x}/{y}/' + COLOR_SCHEME + '/' + OPTIONS + '.png', {
+          opacity: 0, maxNativeZoom: 7, maxZoom: 19, zIndex: 10,
+          attribution: 'Radar: <a href="https://www.rainviewer.com/">RainViewer</a>'
+        });
+        layer.addTo(map);   // preload every frame so the animation is smooth
+        return { time: p.time, layer: layer };
+      });
+      current = -1;
+      clearTimeout(timer);
+      step();
+    })
+    .catch(function (e) {
+      stamp.innerHTML = 'Nedbør<small>radar utilgængelig – prøver igen</small>';
+      console.log('Radar error', e);
+    });
+}
+
+load();
+setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>
