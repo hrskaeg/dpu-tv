@@ -81,7 +81,9 @@ function tvLoginFieldVisible() {
 if (location.hostname.endsWith('dmi.dk')) {
   var dmiZoomed = false;
   var dmiSeconds = 0;
+  var dmiVisibleTicks = 0;
   var DMI_REFRESH_SECONDS = 600;
+  var DMI_ZOOM_AFTER_VISIBLE = 3;   // seconds the tab must be on screen before zooming
 
   function zoomAt(xPct, yPct, amount) {
     var vp = document.querySelector('#new-map-viewer .ol-viewport');
@@ -106,8 +108,12 @@ if (location.hostname.endsWith('dmi.dk')) {
     var playIcon = radar.querySelector('.playbutton .icon-play');
     if (playIcon) { playIcon.click(); return; }
 
-    // zoom once, the first time this tab is actually on screen
-    if (!dmiZoomed && tvIsCurrentTab() && zoomAt(0.42, 0.45)) dmiZoomed = true;
+    // zoom once, after this tab has been on screen for a few seconds (a hidden map ignores the zoom)
+    if (tvIsCurrentTab()) dmiVisibleTicks++; else dmiVisibleTicks = 0;
+    if (!dmiZoomed && dmiVisibleTicks >= DMI_ZOOM_AFTER_VISIBLE && zoomAt(0.42, 0.45)) {
+      dmiZoomed = true;
+      console.log('TV: DMI zoom applied');
+    }
 
     // refresh radar data with DMI's own button instead of reloading the page
     if (dmiSeconds >= DMI_REFRESH_SECONDS) {
