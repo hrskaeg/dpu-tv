@@ -16,6 +16,14 @@ var SHOW_SECONDS = [180, 180, 180, 180, 180];
 var RELOAD_WHEN_LEFT = [false, false, false, false, true];
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
+// The rotation follows the clock, so it stays put across restarts, and each screen is
+// shifted by its own offset so the two TVs never show the same thing at the same time.
+// Keys are the Fully Device IDs (front page of the admin panel); offset in seconds.
+var OFFSET_BY_DEVICE = {
+  '6e6922e9-6e6922e9': 0,     // stick .57 (old Samsung TV)
+  '80639665-80639665': 360    // stick .56 (LG): two tabs ahead
+};
+
 function tvIsCurrentTab() {
   return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
 }
@@ -31,16 +39,30 @@ function tvLoginFieldVisible() {
   return false;
 }
 
+// Which tab should be showing right now, according to the clock and this screen's offset
+function tvScheduledTab(count) {
+  var offset = 0;
+  try { offset = OFFSET_BY_DEVICE[fully.getDeviceId()] || 0; } catch (e) {}
+  var times = [];
+  for (var i = 0; i < count; i++) times.push(SHOW_SECONDS[i] || 60);
+  var cycle = times.reduce(function (a, b) { return a + b; }, 0);
+  var pos = (Math.floor(Date.now() / 1000) + offset) % cycle;
+  for (var j = 0; j < count; j++) {
+    if (pos < times[j]) return j;
+    pos -= times[j];
+  }
+  return 0;
+}
+
 (function () {
   if (typeof fully === 'undefined') return;   // JavaScript Interface not enabled
   var me = fully.getThisTabIndex();
   var wasCurrent = false;
-  var shown = 0;
   var held = 0;
 
   setInterval(function () {
     var current = fully.getCurrentTabIndex() === me;
-    if (!current) { wasCurrent = false; shown = 0; held = 0; return; }
+    if (!current) { wasCurrent = false; held = 0; return; }
 
     // Count the tabs Fully actually has, so a Start URL list that doesn't match TABS
     // (e.g. while updating the sticks) can't make the rotation jump to a tab that isn't there
@@ -60,11 +82,9 @@ function tvLoginFieldVisible() {
     if (tvLoginFieldVisible() && held < MAX_LOGIN_HOLD) { held++; return; }
     held = 0;
 
-    shown++;
-    if (shown >= (SHOW_SECONDS[me] || 60)) {
-      shown = 0;
-      fully.focusTabByIndex((me + 1) % count);
-    }
+    // Only the tab that is showing moves the rotation on
+    var target = tvScheduledTab(count);
+    if (target !== me) fully.focusTabByIndex(target);
   }, 1000);
 })();
 
