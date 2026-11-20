@@ -7,7 +7,12 @@
 <title>Lufthavn live</title>
 <style>
   html, body { margin: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
-  #player { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* The Fire TV tells pages its screen is 960x540, so YouTube picks a low quality to fit.
+     Drawing the player at twice the size and scaling it down makes YouTube choose 1080p. */
+  #player {
+    position: absolute; left: 0; top: 0; width: 200vw; height: 200vh;
+    transform: scale(0.5); transform-origin: 0 0;
+  }
   #label {
     position: absolute; right: 16px; bottom: 32px; z-index: 10;
     background: rgba(0, 0, 0, 0.6); color: #fff; padding: 6px 10px; border-radius: 6px;
