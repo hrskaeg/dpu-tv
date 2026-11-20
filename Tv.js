@@ -5,6 +5,7 @@
 // from showing the same page, give each stick the same pages in a different order.
 var SHOW_SECONDS = 180;            // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;      // max seconds to hold on a login / 2FA screen
+var TAB_COUNT = 4;                 // number of Start URLs (only used if Fully can't tell us)
 
 function tvIsCurrentTab() {
   return typeof fully === 'undefined' || fully.getCurrentTabIndex() === fully.getThisTabIndex();
@@ -37,9 +38,10 @@ function tvLoginFieldVisible() {
     if (shown < SHOW_SECONDS) return;
     shown = 0;
 
-    var count = 1;
-    try { count = JSON.parse(fully.getTabList()).length; } catch (e) {}
-    if (count > 1) fully.focusTabByIndex((me + 1) % count);
+    // Number of tabs: ask Fully, and fall back to TAB_COUNT if it doesn't answer
+    var count = TAB_COUNT;
+    try { var n = JSON.parse(fully.getTabList()).length; if (n > 0) count = n; } catch (e) {}
+    fully.focusTabByIndex((me + 1) % count);
   }, 1000);
 })();
 
