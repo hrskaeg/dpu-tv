@@ -7,7 +7,7 @@ var TABS = [
   'https://www.dmi.dk/#radar',
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
-var RELOAD_WHEN_LEFT = [false, false, true];  // DMI refreshes itself instead, so its zoom is kept
+var RELOAD_WHEN_LEFT = [false, false, true];  // Flightradar24 updates live and draws slowly; DMI refreshes itself
 var SHOW_SECONDS = 60;         // how long each tab is shown
 var MAX_LOGIN_HOLD = 15 * 60;  // max seconds to hold on a login / 2FA screen
 
@@ -83,7 +83,7 @@ if (location.hostname.endsWith('dmi.dk')) {
   var dmiSeconds = 0;
   var dmiVisibleTicks = 0;
   var DMI_REFRESH_SECONDS = 600;
-  var DMI_ZOOM_AFTER_VISIBLE = 3;   // seconds the tab must be on screen before zooming
+  var DMI_ZOOM_AFTER_VISIBLE = 15;  // seconds the tab must be on screen before zooming
 
   function zoomAt(xPct, yPct, amount) {
     var vp = document.querySelector('#new-map-viewer .ol-viewport');
