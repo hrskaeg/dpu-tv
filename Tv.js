@@ -111,25 +111,39 @@ function tvScheduledTab(count) {
 
 // ===== FlightLogger: zoom, remove the navbar, toolbar at the top =====
 // Adjust live in the console: TV.zoom, TV.space (>= 0), TV.shift (may be negative)
+// Kept light on purpose: all tabs share one WebView renderer, and the earlier version
+// (re-zooming and checking every element every second) froze it, so Fully restarted.
 if (location.hostname.endsWith('flightlogger.net')) {
   window.TV = window.TV || { zoom: '0.65', space: '0px', shift: '-97px' };
+  var flPinned = [];        // the toolbar element(s) we moved to the top
+  var flLastScan = 0;
 
-  setInterval(function () {
-    document.body.style.transform = '';
-    document.body.style.marginTop = window.TV.shift;
-    document.documentElement.style.zoom = '0.74';
-    var nav = document.querySelector('.fl-navbar');
-    if (nav) nav.style.display = 'none';
+  function flSet(style, prop, value) {
+    if (style[prop] !== value) style[prop] = value;   // only touch the page when something changed
+  }
+
+  function flFindToolbar() {
+    flPinned = [];
     document.querySelectorAll('body *').forEach(function (el) {
       var s = getComputedStyle(el);
       if (s.position !== 'sticky' && s.position !== 'fixed') return;
       var r = el.getBoundingClientRect();
-      if ((r.top > 40 && r.top < 80 && r.height > 40) ||
-          (r.height > 40 && r.height < 120 && r.top < 300)) {
-        el.style.top = '0px';
-      }
+      if (r.height > 40 && r.height < 120 && r.top < 300) flPinned.push(el);
     });
-    document.body.style.paddingTop = window.TV.space;
-    document.documentElement.style.zoom = window.TV.zoom;
+  }
+
+  setInterval(function () {
+    var body = document.body;
+    if (!body) return;
+    flSet(document.documentElement.style, 'zoom', window.TV.zoom);
+    flSet(body.style, 'marginTop', window.TV.shift);
+    flSet(body.style, 'paddingTop', window.TV.space);
+    var nav = document.querySelector('.fl-navbar');
+    if (nav) flSet(nav.style, 'display', 'none');
+
+    // Look for the toolbar only until it is found (or if the page replaced it), at most every 5 s
+    var lost = !flPinned.length || flPinned.some(function (el) { return !el.isConnected; });
+    if (lost && Date.now() - flLastScan > 5000) { flLastScan = Date.now(); flFindToolbar(); }
+    flPinned.forEach(function (el) { flSet(el.style, 'top', '0px'); });
   }, 1000);
 }
