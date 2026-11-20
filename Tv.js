@@ -10,7 +10,7 @@ var TABS = [
   'https://dpu.flightlogger.net/a/dpu/bookings/overview'
 ];
 // Seconds each tab is shown, same order as TABS (make the slideshow long enough for all slides)
-var SHOW_SECONDS = [60, 60, 60, 60, 60];
+var SHOW_SECONDS = [180, 180, 180, 180, 180];
 // Reload the tab in the background after it has been shown (only FlightLogger needs it;
 // our own pages refresh themselves, Flightradar24 updates live and draws slowly)
 var RELOAD_WHEN_LEFT = [false, false, false, false, true];
