@@ -68,6 +68,18 @@ function tvLoginFieldVisible() {
   }, 1000);
 })();
 
+// ===== FlightLogger kiosk view (app.flightlogger.net): scale to fit the TV =====
+// Set once per page load (Fully runs this script again on every load, so it also covers
+// the kiosk page's own refreshes). Change KIOSK_ZOOM to make it bigger (1) or smaller.
+if (location.hostname === 'app.flightlogger.net') {
+  (function () {
+    var KIOSK_ZOOM = '0.6';
+    function apply() { document.documentElement.style.zoom = KIOSK_ZOOM; }
+    apply();
+    setTimeout(apply, 3000);   // in case the page resets it while starting up
+  })();
+}
+
 /* ===== FlightLogger: turned off for now (2026-11-23) =====
    We switched to FlightLogger's kiosk URL. Everything below was written for the old
    logged-in booking page. Remove the comment markers to turn it back on.
