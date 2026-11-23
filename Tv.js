@@ -70,7 +70,9 @@ function tvLoginFieldVisible() {
 // Adjust live in the console: TV.zoom, TV.space (>= 0), TV.shift (may be negative)
 // Kept light on purpose: all tabs share one WebView renderer, and the earlier version
 // (re-zooming and checking every element every second) froze it, so Fully restarted.
-if (location.hostname.endsWith('flightlogger.net')) {
+// Only for the old logged-in page (dpu.flightlogger.net). FlightLogger's own kiosk view on
+// app.flightlogger.net is left as it is, until we have seen how it looks on the TV.
+if (location.hostname === 'dpu.flightlogger.net') {
   window.TV = window.TV || { zoom: '0.65', space: '0px', shift: '-97px' };
   var flPinned = [];        // the toolbar element(s) we moved to the top
   var flLastScan = 0;
