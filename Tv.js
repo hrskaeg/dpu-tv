@@ -31,8 +31,10 @@ function tvLoginFieldVisible() {
   setInterval(function () {
     if (fully.getCurrentTabIndex() !== me) { shown = 0; held = 0; return; }
 
-    // Login or 2FA code on screen: wait so someone can type it
-    if (tvLoginFieldVisible() && held < MAX_LOGIN_HOLD) { held++; return; }
+    // Login or 2FA code on screen: wait so someone can type it.
+    // Turned off for now: FlightLogger's kiosk URL needs no login, and holding on its 2FA page
+    // kept the TV stuck there for up to 15 minutes.
+    // if (tvLoginFieldVisible() && held < MAX_LOGIN_HOLD) { held++; return; }
 
     shown++;
     if (shown < SHOW_SECONDS) return;
@@ -65,6 +67,10 @@ function tvLoginFieldVisible() {
     if (n > 60) clearInterval(t);
   }, 1000);
 })();
+
+/* ===== FlightLogger: turned off for now (2026-11-23) =====
+   We switched to FlightLogger's kiosk URL. Everything below was written for the old
+   logged-in booking page. Remove the comment markers to turn it back on.
 
 // ===== FlightLogger: zoom, remove the navbar, toolbar at the top =====
 // Adjust live in the console: TV.zoom, TV.space (>= 0), TV.shift (may be negative)
@@ -117,3 +123,5 @@ if (location.hostname.endsWith('flightlogger.net') && typeof fully !== 'undefine
     }, 1000);
   })();
 }
+
+===== end of FlightLogger (turned off) ===== */
