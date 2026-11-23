@@ -77,6 +77,22 @@ if (location.hostname === 'app.flightlogger.net') {
     function apply() { document.documentElement.style.zoom = KIOSK_ZOOM; }
     apply();
     setTimeout(apply, 3000);   // in case the page resets it while starting up
+
+    // FlightLogger updates the bookings by itself, but it doesn't say whether the view moves on
+    // to the next day. So: when the date changes, load the kiosk URL again. We use the Start URL
+    // from Fully (not location.reload), because the page drops the login code from its address.
+    var loadedDay = new Date().toDateString();
+    setInterval(function () {
+      if (new Date().toDateString() === loadedDay) return;
+      loadedDay = new Date().toDateString();
+      var url = null;
+      try {
+        var lines = String(fully.getStartUrl()).split(/\s+/).filter(Boolean);
+        url = lines[fully.getThisTabIndex()];
+      } catch (e) {}
+      if (url && url.indexOf('flightlogger.net') !== -1) location.href = url;
+      else location.reload();
+    }, 60 * 1000);
   })();
 }
 
